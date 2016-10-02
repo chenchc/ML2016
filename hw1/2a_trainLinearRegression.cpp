@@ -21,7 +21,7 @@ double predict(const vector<double> &feature, const vector<double> &weight, doub
 double train(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix, int iteration)
 {
-    const double ETA = 0.0000000001;
+    const double ETA = 0.000000001;
     double sum_squareError = 0.0;
 
     for (int i = 0; i < iteration; i++) {
@@ -63,6 +63,8 @@ int main(int argc, char **argv)
             fin_featureMatrix >> element;
             featureRow.push_back(element);
         }
+        if (fin_featureMatrix.eof())
+            break;
         featureMatrix.push_back(featureRow);
     }
 
@@ -71,6 +73,8 @@ int main(int argc, char **argv)
         double element;
 
         fin_labelMatrix >> element;
+        if (fin_labelMatrix.eof())
+            break;
         labelMatrix.push_back(element);
     }
     
