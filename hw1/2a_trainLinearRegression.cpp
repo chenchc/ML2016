@@ -5,6 +5,7 @@
 using namespace std;
 
 const int FEATURE_COUNT = 18 * 9;
+bool flag_validate = false;
 
 double predict(const vector<double> &feature, const vector<double> &weight, double bias)
 {
@@ -21,12 +22,15 @@ double predict(const vector<double> &feature, const vector<double> &weight, doub
 double train(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix, int iteration)
 {
-    const double ETA = 0.000000001;
+    const double ETA = 0.0000000005;
     double sum_squareError = 0.0;
 
     for (int i = 0; i < iteration; i++) {
         // Randomly pick an instance
-        const int index = rand() % featureMatrix.size();
+        const int index = flag_validate ? 
+            rand() % (featureMatrix.size() * 2 / 3) : 
+            rand() % featureMatrix.size();
+
         const vector<double> featureSet = featureMatrix[index];
         double label = labelMatrix[index];
 
@@ -44,11 +48,29 @@ double train(vector<double> &weight, double &bias, const vector<vector<double> >
     return sum_squareError / iteration;
 }
 
+double test(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
+    const vector<double> &labelMatrix)
+{
+    double sum_squareError = 0.0;
+
+    for (int i = featureMatrix.size() * 2 / 3; i < featureMatrix.size(); i++) {
+        double predictLabel = predict(featureMatrix[i], weight, bias);
+        double label = labelMatrix[i];
+
+        sum_squareError += (label - predictLabel) * (label - predictLabel);
+    }
+
+    return sum_squareError / (featureMatrix.size() / 3);
+}
+
 int main(int argc, char **argv)
 {
     char *filename_featureMatrix = argv[1];
     char *filename_labelMatrix = argv[2];
     char *filename_weight = argv[3];
+
+    if (argc == 5)
+        flag_validate = true;
     
     // Load data
     vector<vector<double> > featureMatrix;
@@ -82,9 +104,14 @@ int main(int argc, char **argv)
     vector<double> weight(FEATURE_COUNT, 0.0);
     double bias = 0.0;
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 500; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 1000000);
-        cout << "Epoch #" << i << ": MSE=" << mse << endl;
+        cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
+
+        if (flag_validate) {
+            double testingMSE = test(weight, bias, featureMatrix, labelMatrix);
+            cout << "Epoch #" << i << ": Testing Data MSE=" << testingMSE << endl;
+        }
     }
 
     // Output weight
