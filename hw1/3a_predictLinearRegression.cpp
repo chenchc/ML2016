@@ -58,12 +58,14 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < testingFeatureMatrix.size(); i++) {
         const vector<double> &feature = testingFeatureMatrix[i];
-
-        predictLabel.push_back(predict(feature, weight, bias));
+        double label = predict(feature, weight, bias);
+        label = label < 0.0 ? 0.0 : label;
+        predictLabel.push_back(label);
     }
 
     // Output submission
     ofstream fout_submission(filename_submission);
+    fout_submission.precision(20);
     fout_submission << "id,value" << endl;
     for (int i = 0; i < predictLabel.size(); i++)
         fout_submission << "id_" << i << "," << predictLabel[i] << endl;

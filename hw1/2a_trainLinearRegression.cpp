@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     double lastTestingMSESum = 6e23;
     double testingMSESum = 0.0;
 
-    for (int i = 0; i < 400; i++) {
+    for (int i = 0; i < 300; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 1000000);
         cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
 
@@ -131,6 +131,7 @@ int main(int argc, char **argv)
 
     // Output weight
     ofstream fout_weight(filename_weight);
+    fout_weight.precision(20);
     for (int i = 0; i < FEATURE_COUNT; i++)
         fout_weight << weight[i] << endl;
 
