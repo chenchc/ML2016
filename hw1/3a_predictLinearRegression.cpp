@@ -4,7 +4,7 @@
 #include <cstdlib>
 using namespace std;
 
-const int FEATURE_COUNT = 18 * 9;
+int FEATURE_COUNT;
 
 double predict(const vector<double> &feature, const vector<double> &weight, double bias)
 {
@@ -23,6 +23,7 @@ int main(int argc, char **argv)
     char *filename_testingFeatureMatrix = argv[1];
     char *filename_weight = argv[2];
     char *filename_submission = argv[3];
+    FEATURE_COUNT = atoi(argv[4]);
     
     // Load data
     vector<vector<double> > testingFeatureMatrix;

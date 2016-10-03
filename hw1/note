@@ -1,0 +1,10 @@
+lambda=0: 31.5807
+lambda=0.01: 31.5797
+lambda=0.1: 31.5729
+lambda=1: 31.619
+lambda=10: 34.726
+
+with FeatureSel:
+lambda=0: 31.001
+lambda=0.01: 31.0025
+lambda=0.1: 31.018

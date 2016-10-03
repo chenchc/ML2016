@@ -4,7 +4,7 @@
 #include <cstdlib>
 using namespace std;
 
-const int FEATURE_COUNT = 18 * 9;
+int FEATURE_COUNT;
 bool flag_validate = false;
 
 double predict(const vector<double> &feature, const vector<double> &weight, double bias)
@@ -23,6 +23,7 @@ double train(vector<double> &weight, double &bias, const vector<vector<double> >
     const vector<double> &labelMatrix, int iteration)
 {
     const double ETA = 0.0000000005;
+    const double LAMBDA = 0.0;
     double sum_squareError = 0.0;
 
     for (int i = 0; i < iteration; i++) {
@@ -37,9 +38,9 @@ double train(vector<double> &weight, double &bias, const vector<vector<double> >
         // Gradient Descent
         double predictLabel = predict(featureSet, weight, bias);
         for (int i = 0; i < FEATURE_COUNT; i++) {
-            weight[i] += ETA * (label - predictLabel) * featureSet[i];
+            weight[i] += ETA * (2 * (label - predictLabel) * featureSet[i] - 2 * LAMBDA * weight[i]);
         }
-        bias += ETA * (label - predictLabel);
+        bias += ETA * (2 * (label - predictLabel));
 
         // Statistics
         sum_squareError += (label - predictLabel) * (label - predictLabel);
@@ -68,8 +69,9 @@ int main(int argc, char **argv)
     char *filename_featureMatrix = argv[1];
     char *filename_labelMatrix = argv[2];
     char *filename_weight = argv[3];
+    FEATURE_COUNT = atoi(argv[4]);
 
-    if (argc == 5)
+    if (argc == 6)
         flag_validate = true;
     
     // Load data
@@ -107,7 +109,7 @@ int main(int argc, char **argv)
     double lastTestingMSESum = 6e23;
     double testingMSESum = 0.0;
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 400; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 1000000);
         cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
 
@@ -115,13 +117,15 @@ int main(int argc, char **argv)
             double testingMSE = test(weight, bias, featureMatrix, labelMatrix);
 
             if (i % 50 == 49) {
-                if (testingMSESum > lastTestingMSESum)
+                if (testingMSESum > lastTestingMSESum) {
+                    cout << "Best MSE=" << lastTestingMSESum / 50 << endl;
                     break;
+                }
                 lastTestingMSESum = testingMSESum;
                 testingMSESum = 0.0;
             }
             testingMSESum += testingMSE;
-            cout << "Epoch #" << i << ": Testing Data MSE=" << testingMSE << endl;
+            cout << "Epoch #" << i << ": Testing Data MSE=" << testingMSE  << endl;
         }
     }
 
