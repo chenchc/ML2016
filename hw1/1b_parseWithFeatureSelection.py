@@ -92,18 +92,13 @@ def writeMatrix(filename, matrix):
                 writer.writerow(row)
 
 def featureSelection(featureMatrix):
+    FEATURE_LIST = [5, 6, 7, 8, 9, 10, 12]
+    DATE_LIST = [2, 3, 4, 5, 6, 7, 8]
     newFeatureMatrix = []
     for row in featureMatrix:
         newFeatureMatrix.append([])
         for i in range(len(row)):
-            if i % FEATURE_COUNT == 10: # rain fall
-                newFeatureMatrix[len(newFeatureMatrix) - 1].append(0 if row[i] < 0.001 else 1) # rain fall or not
-                newFeatureMatrix[len(newFeatureMatrix) - 1].append(row[i])
-            elif i % FEATURE_COUNT == 14: # wind direction
-                0
-            elif i % FEATURE_COUNT == 15: # wind direction
-                0
-            else:
+            if i / FEATURE_COUNT in DATE_LIST and i % FEATURE_COUNT in FEATURE_LIST:
                 newFeatureMatrix[len(newFeatureMatrix) - 1].append(row[i])
 
     return newFeatureMatrix

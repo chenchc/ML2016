@@ -15,4 +15,6 @@ lambda=0.5: 30.7441
 lambda=0.25: 30.7272
 lambda=0.125: 30.8308
 lambda=0.0625: 30.8874
- 
+
+With feature trucation:
+lambda=0: 30.8243 
