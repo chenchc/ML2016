@@ -104,12 +104,23 @@ int main(int argc, char **argv)
     vector<double> weight(FEATURE_COUNT, 0.0);
     double bias = 0.0;
 
-    for (int i = 0; i < 500; i++) {
+    double lastTestingMSESum = 6e23;
+    double testingMSESum = 0.0;
+
+    for (int i = 0; i < 1000; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 1000000);
         cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
 
         if (flag_validate) {
             double testingMSE = test(weight, bias, featureMatrix, labelMatrix);
+
+            if (i % 50 == 49) {
+                if (testingMSESum > lastTestingMSESum)
+                    break;
+                lastTestingMSESum = testingMSESum;
+                testingMSESum = 0.0;
+            }
+            testingMSESum += testingMSE;
             cout << "Epoch #" << i << ": Testing Data MSE=" << testingMSE << endl;
         }
     }
