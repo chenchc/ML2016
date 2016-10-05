@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <cstdlib>
+#include <algorithm>
 using namespace std;
 
 int FEATURE_COUNT;
@@ -19,26 +20,45 @@ double predict(const vector<double> &feature, const vector<double> &weight, doub
     return result;
 }
 
+int myrandom(int i)
+{
+    return rand() % i;
+}
+
 double train(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix, int iteration)
 {
     const double ETA = 0.0000000005;
-    const double LAMBDA = 0.0;
+    const double LAMBDA = 0.25;
     double sum_squareError = 0.0;
+    int size = flag_validate ? featureMatrix.size() * 2 / 3 : featureMatrix.size();
+
+    vector<vector<double> > newFeatureMatrix;
+    vector<double> newLabelMatrix;
+    {
+        vector<int> indexList;
+
+        for (int i = 0; i < size; i++)
+            indexList.push_back(i);
+        random_shuffle(indexList.begin(), indexList.end(), myrandom);
+
+        for (int i = 0; i < size; i++) {
+            newFeatureMatrix.push_back(featureMatrix[i]);
+            newLabelMatrix.push_back(labelMatrix[i]);
+        }
+    }
 
     for (int i = 0; i < iteration; i++) {
-        // Randomly pick an instance
-        const int index = flag_validate ? 
-            rand() % (featureMatrix.size() * 2 / 3) : 
-            rand() % featureMatrix.size();
+        // Pick an instance
+        const int index = i % size;
 
-        const vector<double> featureSet = featureMatrix[index];
-        double label = labelMatrix[index];
+        const vector<double> featureSet = newFeatureMatrix[index];
+        double label = newLabelMatrix[index];
 
         // Gradient Descent
         double predictLabel = predict(featureSet, weight, bias);
         for (int i = 0; i < FEATURE_COUNT; i++) {
-            weight[i] += ETA * (2 * (label - predictLabel) * featureSet[i] - 2 * LAMBDA * weight[i]);
+            weight[i] += ETA * (2 * (label - predictLabel) * featureSet[i] - 2 * LAMBDA * (weight[i] > 0.0 ? 1.0 : (weight[i] < 0.0 ? -1.0 : 0.0)));
         }
         bias += ETA * (2 * (label - predictLabel));
 
@@ -109,7 +129,7 @@ int main(int argc, char **argv)
     double lastTestingMSESum = 6e23;
     double testingMSESum = 0.0;
 
-    for (int i = 0; i < 300; i++) {
+    for (int i = 0; i < 1000; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 1000000);
         cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
 
