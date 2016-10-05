@@ -7,6 +7,7 @@ using namespace std;
 
 int FEATURE_COUNT;
 int HIDDEN_COUNT = 150;
+int NEG_COUNT = 30;
 
 double hiddenOutput(const vector<double> &feature, const vector<double> &hiddenWeight)
 {
@@ -25,7 +26,7 @@ double predict(const vector<double> &feature, const vector<vector<double> > &wei
     double predictLabel = 0.0;
 
     for (int i = 0; i < HIDDEN_COUNT; i++) {
-        predictLabel += hiddenOutput(feature, weight[i]);
+        predictLabel += (i < NEG_COUNT ? -1.0 : 1.0) * hiddenOutput(feature, weight[i]);
     }
     predictLabel += bias;
    

@@ -6,7 +6,8 @@
 using namespace std;
 
 int FEATURE_COUNT;
-int HIDDEN_COUNT = 150;
+int HIDDEN_COUNT = 200;
+int NEG_COUNT = 50;
 bool flag_validate = false;
 
 double hiddenOutput(const vector<double> &feature, const vector<double> &hiddenWeight)
@@ -26,7 +27,7 @@ double predict(const vector<double> &feature, const vector<vector<double> > &wei
     double predictLabel = 0.0;
 
     for (int i = 0; i < HIDDEN_COUNT; i++) {
-        predictLabel += hiddenOutput(feature, weight[i]);
+        predictLabel += (i < NEG_COUNT ? -1.0 : 1.0) * hiddenOutput(feature, weight[i]);
     }
     predictLabel += bias;
    
@@ -73,17 +74,17 @@ double train(vector<vector<double> > &weight, double &bias, const vector<vector<
 
         for (int i = 0; i < HIDDEN_COUNT; i++) {
             hiddenLayerOutput[i] = hiddenOutput(featureSet, weight[i]);
-            predictLabel += hiddenLayerOutput[i];
+            predictLabel += (i < NEG_COUNT ? -1.0 : 1.0) * hiddenLayerOutput[i];
         }
         predictLabel += bias;
 
         for (int i = 0; i < HIDDEN_COUNT; i++) {
-            if (hiddenLayerOutput[i] == 0)
+            if (hiddenLayerOutput[i] <= 0)
                 continue;
             for (int j = 0; j < FEATURE_COUNT; j++) {
-                weight[i][j] += ETA * (2 * (label - predictLabel) * featureSet[j]);
+                weight[i][j] += ETA * (i < NEG_COUNT ? -1.0 : 1.0) * (2 * (label - predictLabel) * featureSet[j]);
             }
-            weight[i][FEATURE_COUNT] += ETA * (2 * (label - predictLabel));
+            weight[i][FEATURE_COUNT] += ETA * (i < NEG_COUNT ? -1.0 : 1.0) * (2 * (label - predictLabel));
         }
         bias += ETA * (2 * (label - predictLabel));
 
@@ -149,13 +150,19 @@ int main(int argc, char **argv)
     
     // Train
     vector<vector<double> > weight(HIDDEN_COUNT, 
-        vector<double>(FEATURE_COUNT + 1, (double)rand() / RAND_MAX / 1000.0 - 0.0005));
+        vector<double>(FEATURE_COUNT + 1));
+    for (int i = 0; i < HIDDEN_COUNT; i++) {
+        for (int j = 0; j < FEATURE_COUNT; j++) {
+            weight[i][j] = ((double)rand() / RAND_MAX - 0.5) / 1000;
+        }
+    }
+
     double bias = 0.0;
 
     double lastTestingMSESum = 6e23;
     double testingMSESum = 0.0;
 
-    for (int i = 0; i < 170; i++) {
+    for (int i = 0; i < 300; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 100000);
         cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
 
