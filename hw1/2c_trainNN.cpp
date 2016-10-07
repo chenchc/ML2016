@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     double lastTestingMSESum = 6e23;
     double testingMSESum = 0.0;
 
-    for (int i = 0; i < 300; i++) {
+    for (int i = 0; i < 325; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 100000);
         cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
 

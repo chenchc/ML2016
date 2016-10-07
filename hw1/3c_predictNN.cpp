@@ -6,8 +6,8 @@
 using namespace std;
 
 int FEATURE_COUNT;
-int HIDDEN_COUNT = 150;
-int NEG_COUNT = 30;
+int HIDDEN_COUNT = 200;
+int NEG_COUNT = 50;
 
 double hiddenOutput(const vector<double> &feature, const vector<double> &hiddenWeight)
 {

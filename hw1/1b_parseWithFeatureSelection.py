@@ -1,10 +1,12 @@
 import sys
 import csv
 import math
+from random import shuffle
 
 TRAINDATA_ROW_BEGIN = 1
 TRAINDATA_COL_BEGIN = 3
 TRAINDATA_COL_COUNT = 24
+TRAINDATA_CONTINUOUS_DAY = 20
 TESTDATA_COL_BEGIN = 2
 FEATURE_COUNT = 18
 FEATURE_TIMESPAN = 9
@@ -41,21 +43,34 @@ def parseTrainFileIntoTimeSeries(filename):
     
     return timeSeries
 
+def correctNegOneInTimeSeries(timeSeries):
+    for i in range(1, len(timeSeries) - 1):
+        if timeSeries[i][FEATURE_PM25_INDEX] == -1.0:
+            j = 1
+            while 1:
+                if timeSeries[i + j][FEATURE_PM25_INDEX] != -1.0:
+                    break
+                j = j + 1
+            timeSeries[i][FEATURE_PM25_INDEX] = (timeSeries[i - 1][FEATURE_PM25_INDEX] * j + timeSeries[i + j][FEATURE_PM25_INDEX]) / (j + 1)
+    return timeSeries
+
 def getFeatureMatrixGivenTimeSeries(timeSeries):
     featureMatrix = []
-    for i in range(len(timeSeries) - FEATURE_TIMESPAN):
-        featureRow = []
-        for j in range(FEATURE_TIMESPAN):
-            featureRow.extend(timeSeries[i + j])
+    for k in range(0, len(timeSeries), TRAINDATA_CONTINUOUS_DAY * TRAINDATA_COL_COUNT):
+        for i in range(TRAINDATA_CONTINUOUS_DAY * TRAINDATA_COL_COUNT - FEATURE_TIMESPAN):
+            featureRow = []
+            for j in range(FEATURE_TIMESPAN):
+                featureRow.extend(timeSeries[k + i + j])
 
-        featureMatrix.append(featureRow)
+            featureMatrix.append(featureRow)
 
     return featureMatrix
 
 def getLabelMatrixGivenTimeSeries(timeSeries):
     labelMatrix = []
-    for i in range(FEATURE_TIMESPAN, len(timeSeries)):
-        labelMatrix.append(timeSeries[i][FEATURE_PM25_INDEX])
+    for k in range(0, len(timeSeries), TRAINDATA_CONTINUOUS_DAY * TRAINDATA_COL_COUNT):
+        for i in range(FEATURE_TIMESPAN, TRAINDATA_CONTINUOUS_DAY * TRAINDATA_COL_COUNT):
+            labelMatrix.append(timeSeries[k + i][FEATURE_PM25_INDEX])
 
     return labelMatrix
 
@@ -77,6 +92,17 @@ def parseTestFileIntoTestingFeatureMatrix(filename):
                 element = float(element)
 
                 testingFeatureRow.append(element)
+        
+        if testingFeatureRow[FEATURE_PM25_INDEX] == -1.0:
+            testingFeatureRow[FEATURE_PM25_INDEX] = testingFeatureRow[FEATURE_PM25_INDEX + FEATURE_COUNT]
+        for j in range(FEATURE_PM25_INDEX + FEATURE_COUNT, len(testingFeatureRow), FEATURE_COUNT):
+            if testingFeatureRow[j] == -1.0:
+                k = 1
+                while 1:
+                    if testingFeatureRow[j + k * FEATURE_COUNT] != -1.0:
+                        break
+                    k = k + 1
+                testingFeatureRow[j] = (testingFeatureRow[j - FEATURE_COUNT] * k + testingFeatureRow[j + k * FEATURE_COUNT]) / (k + 1)
 
         testingFeatureMatrix.append(testingFeatureRow)
 
@@ -112,13 +138,22 @@ filename_testingFeatureMatrix = sys.argv[5]
 
 # Training data
 timeSeries = parseTrainFileIntoTimeSeries(filename_train)
+timeSeries = correctNegOneInTimeSeries(timeSeries)
 
 featureMatrix = getFeatureMatrixGivenTimeSeries(timeSeries)
 newFeatureMatrix = featureSelection(featureMatrix)
-writeMatrix(filename_featureMatrix, newFeatureMatrix)
+randomIndex = range(len(newFeatureMatrix))
+shuffle(randomIndex)
+newNewFeatureMatrix = []
+for index in randomIndex:
+    newNewFeatureMatrix.append(newFeatureMatrix[index])
+writeMatrix(filename_featureMatrix, newNewFeatureMatrix)
 
 labelMatrix = getLabelMatrixGivenTimeSeries(timeSeries)
-writeMatrix(filename_labelMatrix, labelMatrix)
+newLabelMatrix = []
+for index in randomIndex:
+    newLabelMatrix.append(labelMatrix[index])
+writeMatrix(filename_labelMatrix, newLabelMatrix)
 
 # Testing data
 testingFeatureMatrix = parseTestFileIntoTestingFeatureMatrix(filename_test)
