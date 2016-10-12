@@ -138,9 +138,29 @@ filename_testingFeatureMatrix = sys.argv[5]
 
 # Training data
 timeSeries = parseTrainFileIntoTimeSeries(filename_train)
-timeSeries = correctNegOneInTimeSeries(timeSeries)
 
 featureMatrix = getFeatureMatrixGivenTimeSeries(timeSeries)
+labelMatrix = getLabelMatrixGivenTimeSeries(timeSeries)
+
+pureFeatureMatrix = []
+pureLabelMatrix = []
+for index in range(len(featureMatrix)):
+    feature = featureMatrix[index]
+    label = labelMatrix[index]
+    dropit = False
+
+    for j in range(FEATURE_PM25_INDEX, len(feature), FEATURE_COUNT):
+        if feature[j] == -1.0:
+            dropit = True
+    if label == -1.0:
+        dropit = True
+
+    if not dropit:
+        pureFeatureMatrix.append(feature)
+        pureLabelMatrix.append(label)
+featureMatrix = pureFeatureMatrix
+labelMatrix = pureLabelMatrix
+
 newFeatureMatrix = featureSelection(featureMatrix)
 randomIndex = range(len(newFeatureMatrix))
 shuffle(randomIndex)
@@ -149,7 +169,6 @@ for index in randomIndex:
     newNewFeatureMatrix.append(newFeatureMatrix[index])
 writeMatrix(filename_featureMatrix, newNewFeatureMatrix)
 
-labelMatrix = getLabelMatrixGivenTimeSeries(timeSeries)
 newLabelMatrix = []
 for index in randomIndex:
     newLabelMatrix.append(labelMatrix[index])
