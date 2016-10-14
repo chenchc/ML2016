@@ -29,7 +29,7 @@ double train(vector<double> &weight, double &bias, const vector<vector<double> >
     const vector<double> &labelMatrix, int iteration)
 {
     const double ETA = 0.0000000005;
-    const double LAMBDA = 0.25;
+    const double LAMBDA = 0.0;
     double sum_squareError = 0.0;
     int size = flag_validate ? featureMatrix.size() * 2 / 3 : featureMatrix.size();
 
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
     double lastTestingMSESum = 6e23;
     double testingMSESum = 0.0;
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 300; i++) {
         double mse = train(weight, bias, featureMatrix, labelMatrix, 1000000);
         cout << "Epoch #" << i << ": Training Data MSE=" << mse << endl;
 
