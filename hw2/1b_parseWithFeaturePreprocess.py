@@ -6,6 +6,22 @@ from random import shuffle
 FEATURE_COUNT = 57
 LABEL_INDEX = 58
 
+def mean(numbers):
+    total = 0
+    for i in range(len(numbers)):
+        total += numbers[i]
+
+    return total / len(numbers)
+
+def stdev(numbers):
+    meanValue = mean(numbers)
+
+    total = 0
+    for i in range(len(numbers)):
+        total += pow(numbers[i] - meanValue, 2)
+
+    return math.sqrt(total / len(numbers))
+
 def parseFileIntoFeatureMatrix(filename):
     rawMatrix = []
     with open(filename, 'rb') as file:
@@ -51,6 +67,40 @@ def writeMatrix(filename, matrix):
             else:
                 writer.writerow(row)
 
+def featurePreprocess(featureMatrix):
+    # Get feature mean and SD
+    CAPITAL_RUN_LENGTH_AVERAGE_MEAN = mean([row[54] for row in featureMatrix])
+    CAPITAL_RUN_LENGTH_AVERAGE_SD = stdev([row[54] for row in featureMatrix])
+    CAPITAL_RUN_LENGTH_LONGEST_MEAN = mean([row[55] for row in featureMatrix])
+    CAPITAL_RUN_LENGTH_LONGEST_SD = stdev([row[55] for row in featureMatrix])
+    CAPITAL_RUN_LENGTH_TOTAL_MEAN = mean([row[56] for row in featureMatrix])
+    CAPITAL_RUN_LENGTH_TOTAL_SD = stdev([row[56] for row in featureMatrix])
+
+    # Feature preprocessing
+    newFeatureMatrix = []
+    for i in range(len(featureMatrix)):
+        newFeatureRow = []
+
+        # Copy non-preprocessing features
+        NONPREPROCESSING_FEATURE_LIST = range(0, 54)
+        for j in NONPREPROCESSING_FEATURE_LIST:
+            newFeatureRow.append(featureMatrix[i][j])
+
+        # Normalized features
+        newFeatureRow.append((featureMatrix[i][54] - CAPITAL_RUN_LENGTH_AVERAGE_MEAN) / CAPITAL_RUN_LENGTH_AVERAGE_SD)
+        newFeatureRow.append((featureMatrix[i][55] - CAPITAL_RUN_LENGTH_LONGEST_MEAN) / CAPITAL_RUN_LENGTH_LONGEST_SD)
+        newFeatureRow.append((featureMatrix[i][56] - CAPITAL_RUN_LENGTH_TOTAL_MEAN) / CAPITAL_RUN_LENGTH_TOTAL_SD)
+
+        # Feature expansion
+        newFeatureRow.append(featureMatrix[i][54] / featureMatrix[i][55])
+        newFeatureRow.append(featureMatrix[i][54] / featureMatrix[i][56])
+        newFeatureRow.append(featureMatrix[i][55] / featureMatrix[i][56])
+        
+        newFeatureMatrix.append(newFeatureRow)
+
+    return newFeatureMatrix
+
+       
 # Parse arguments         
 filename_train = sys.argv[1]
 filename_test = sys.argv[2]
@@ -61,6 +111,8 @@ filename_testingFeatureMatrix = sys.argv[5]
 # Training data
 featureMatrix = parseFileIntoFeatureMatrix(filename_train)
 labelMatrix = parseFileIntoLabelMatrix(filename_train)
+
+featureMatrix = featurePreprocess(featureMatrix)
 
 randomIndex = range(len(featureMatrix))
 shuffle(randomIndex)
@@ -76,5 +128,6 @@ writeMatrix(filename_labelMatrix, newLabelMatrix)
 
 # Testing data
 testingFeatureMatrix = parseFileIntoFeatureMatrix(filename_test)
+testingFeatureMatrix = featurePreprocess(testingFeatureMatrix)
 writeMatrix(filename_testingFeatureMatrix, testingFeatureMatrix)
 
