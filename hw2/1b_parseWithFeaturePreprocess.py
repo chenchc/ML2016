@@ -58,6 +58,18 @@ def parseFileIntoLabelMatrix(filename):
 
     return labelMatrix
 
+def truncate(featureMatrix, labelMatrix):
+    newFeatureMatrix = []
+    newLabelMatrix = []
+    for i in range(1, len(featureMatrix)):
+        if not featureMatrix[i] == featureMatrix[i - 1]:
+            newFeatureMatrix.append(featureMatrix[i])
+            newLabelMatrix.append(labelMatrix[i])
+    del featureMatrix[:]
+    featureMatrix.extend(newFeatureMatrix)
+    del labelMatrix[:]
+    labelMatrix.extend(newLabelMatrix)
+
 def writeMatrix(filename, matrix):
     with open(filename, 'wb') as file:
         writer = csv.writer(file, delimiter = ' ')
@@ -111,6 +123,8 @@ filename_testingFeatureMatrix = sys.argv[5]
 # Training data
 featureMatrix = parseFileIntoFeatureMatrix(filename_train)
 labelMatrix = parseFileIntoLabelMatrix(filename_train)
+
+truncate(featureMatrix, labelMatrix)
 
 featureMatrix = featurePreprocess(featureMatrix)
 
