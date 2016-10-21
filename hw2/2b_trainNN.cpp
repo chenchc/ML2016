@@ -7,6 +7,7 @@
 #include <climits>
 #include <cfloat>
 #include <fenv.h>
+#include <assert.h>
 using namespace std;
 
 int FEATURE_COUNT;
@@ -20,16 +21,31 @@ inline double sigmoid(double z)
     return result;
 }
 
-double predict(const vector<double> &feature, const vector<double> &weight, double bias)
+inline double relu(double z)
 {
-    double result = 0.0;
+    return (z > 0.0) ? z : 0.0;
+}
+
+double predict(vector<double> &output1, const vector<double> &feature, const vector<vector<double> > &weight0, const vector<double> &weight1)
+{
+    for (int i = 0; i < HIDDEN_COUNT; i++) {
+        double z1 = 0.0;
+        for (int j = 0; j < FEATURE_COUNT; j++) {
+            z1 += feature[j] * weight0[i][j];
+        }
+        z1 += weight0[i][FEATURE_COUNT];
+
+        output1[i] = relu(z1);
+    }
+
+    double z2 = 0.0;
     
-    for (int i = 0; i < FEATURE_COUNT; i++)
-        result += feature[i] * weight[i];
+    for (int i = 0; i < HIDDEN_COUNT; i++) {
+        z2 += output1[i] * weight1[i];
+    }
+    z2 += weight1[HIDDEN_COUNT];
 
-    result += bias;
-
-    return sigmoid(result);
+    return sigmoid(z2);
 }
 
 int myrandom(int i)
@@ -37,10 +53,10 @@ int myrandom(int i)
     return rand() % i;
 }
 
-double train(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
+double train(vector<vector<double> > &weight0, vector<double> &weight1, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix, int iteration)
 {
-    const double ETA = 0.000001;
+    const double ETA = 0.000005;
     double sum_crossEntropy = 0.0;
     int size = flag_validate ? featureMatrix.size() * 4 / 5 : featureMatrix.size();
 
@@ -68,11 +84,24 @@ double train(vector<double> &weight, double &bias, const vector<vector<double> >
             double label = newLabelMatrix[index];
 
             // Gradient Descent
-            double predictLabel = predict(featureSet, weight, bias);
-            for (int i = 0; i < FEATURE_COUNT; i++) {
-                weight[i] += ETA * (2 * (label - predictLabel) * featureSet[i]);
+            vector<double> output1(HIDDEN_COUNT);
+            double predictLabel = predict(output1, featureSet, weight0, weight1);
+            double gradient_output2 = 2 * (label - predictLabel);
+
+            vector<double> gradient_output1(HIDDEN_COUNT);
+            for (int i = 0; i < HIDDEN_COUNT; i++) {
+                gradient_output1[i] = gradient_output2 * weight1[i];
+                weight1[i] += ETA * gradient_output2 * output1[i];
             }
-            bias += ETA * (2 * (label - predictLabel));
+            weight1[HIDDEN_COUNT] += ETA * gradient_output2;
+            
+            for (int i = 0; i < HIDDEN_COUNT; i++) {
+                for (int j = 0; j < FEATURE_COUNT; j++) {
+                    if (output1[i] > 0.0)
+                        weight0[i][j] += ETA * gradient_output1[i] * featureSet[j];
+                }
+                weight0[i][FEATURE_COUNT] += ETA * gradient_output1[i];
+            }
 
             // Statistics
             if (label == 1.0)
@@ -88,13 +117,14 @@ double train(vector<double> &weight, double &bias, const vector<vector<double> >
     return ce;
 }
 
-double test(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
+double test(vector<vector<double> > &weight0, vector<double> &weight1, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix)
 {
     double sum_crossEntropy = 0.0;
 
     for (int i = featureMatrix.size() * 4 / 5; i < featureMatrix.size(); i++) {
-        double predictLabel = predict(featureMatrix[i], weight, bias);
+        vector<double> output1(HIDDEN_COUNT);
+        double predictLabel = predict(output1, featureMatrix[i], weight0, weight1);
         double label = labelMatrix[i];
 
         if (label == 1.0)
@@ -108,13 +138,14 @@ double test(vector<double> &weight, double &bias, const vector<vector<double> > 
     return sum_crossEntropy / (featureMatrix.size() - featureMatrix.size() * 4 / 5);
 }
 
-double testAccuracy(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
+double testAccuracy(vector<vector<double> > &weight0, vector<double> &weight1, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix)
 {
     int count = 0;
 
     for (int i = featureMatrix.size() * 4 / 5; i < featureMatrix.size(); i++) {
-        double predictLabel = predict(featureMatrix[i], weight, bias);
+        vector<double> output1(HIDDEN_COUNT);
+        double predictLabel = predict(output1, featureMatrix[i], weight0, weight1);
         double label = labelMatrix[i];
 
         if (predictLabel < 0.5) {
@@ -139,7 +170,8 @@ int main(int argc, char **argv)
         flag_validate = true;
    
     feenableexcept(FE_INVALID | FE_OVERFLOW);
-    
+    srand((unsigned int)time(NULL));
+
     // Load data
     vector<vector<double> > featureMatrix;
     vector<double> labelMatrix;
@@ -169,19 +201,29 @@ int main(int argc, char **argv)
     }
     
     // Train
-    vector<double> weight(FEATURE_COUNT, 0.0);
-    double bias = 0.0;
+    vector<vector<double> > weight0(
+        HIDDEN_COUNT, 
+        vector<double>(FEATURE_COUNT + 1, 0.0)
+        );
+    vector<double> weight1(HIDDEN_COUNT + 1, 0.0);
+
+    for (int i = 0; i < HIDDEN_COUNT; i++) {
+        for (int j = 0; j < FEATURE_COUNT; j++ ) {
+            weight0[i][j] = ((double)rand() / RAND_MAX - 0.5) * 2.0 * sqrt(6.0 / (FEATURE_COUNT + HIDDEN_COUNT));
+        }
+        weight1[i] = ((double)rand() / RAND_MAX - 0.5) * 8.0 * sqrt(6.0 / (HIDDEN_COUNT + 1));
+    }
 
     double lastTestingCESum = 6e23;
     double testingCESum = 0.0;
     int stopIteration = flag_validate ? INT_MAX : STOP_ITERATION;
 
     for (int i = 0; i < stopIteration; i++) {
-        double ce = train(weight, bias, featureMatrix, labelMatrix, 1000);
+        double ce = train(weight0, weight1, featureMatrix, labelMatrix, 100);
         cout << "Epoch #" << i << ": Training Data CE=" << ce << endl;
 
         if (flag_validate) {
-            double testingCE = test(weight, bias, featureMatrix, labelMatrix);
+            double testingCE = test(weight0, weight1, featureMatrix, labelMatrix);
             testingCESum += testingCE;
 
             if (i % 10 == 9) {
@@ -194,29 +236,23 @@ int main(int argc, char **argv)
                 // Output weight
                 ofstream fout_weight(filename_weight);
                 fout_weight.precision(20);
-                for (int i = 0; i < FEATURE_COUNT; i++)
-                    fout_weight << weight[i] << endl;
-
-                fout_weight << bias << endl;
+                for (int i = 0; i < HIDDEN_COUNT; i++) {
+                    for (int j = 0; j < FEATURE_COUNT + 1; j++) {
+                        fout_weight << weight0[i][j] << endl;
+                    }
+                }
+                for (int i = 0; i < HIDDEN_COUNT + 1; i++) {
+                    fout_weight << weight1[i] << endl;
+                }
 
                 lastTestingCESum = testingCESum;
                 testingCESum = 0.0;
             }
 
-            double testingAccuracy = testAccuracy(weight, bias, featureMatrix, labelMatrix);
+            double testingAccuracy = testAccuracy(weight0, weight1, featureMatrix, labelMatrix);
             cout << "Epoch #" << i << ": Testing Data CE=" << testingCE << " Accuracy=" << testingAccuracy << endl;
         }
     }
-
-    // Output weight
-    /*
-    ofstream fout_weight(filename_weight);
-    fout_weight.precision(20);
-    for (int i = 0; i < FEATURE_COUNT; i++)
-        fout_weight << weight[i] << endl;
-
-    fout_weight << bias << endl;
-    */
 
     return 0;
 }
