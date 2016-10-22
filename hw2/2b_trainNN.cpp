@@ -26,11 +26,17 @@ inline double relu(double z)
     return (z > 0.0) ? z : 0.0;
 }
 
-double predict(vector<double> &output1, const vector<double> &feature, const vector<vector<double> > &weight0, const vector<double> &weight1)
+double predictWithDropout(vector<double> &output1, const vector<double> &feature, const vector<vector<double> > &weight0, const vector<double> &weight1, 
+    const vector<bool> &dropout0, const vector<bool> &dropout1)
 {
     for (int i = 0; i < HIDDEN_COUNT; i++) {
+        if (dropout1[i])
+            continue;
+
         double z1 = 0.0;
         for (int j = 0; j < FEATURE_COUNT; j++) {
+            if (dropout0[j])
+                continue;
             z1 += feature[j] * weight0[i][j];
         }
         z1 += weight0[i][FEATURE_COUNT];
@@ -41,7 +47,31 @@ double predict(vector<double> &output1, const vector<double> &feature, const vec
     double z2 = 0.0;
     
     for (int i = 0; i < HIDDEN_COUNT; i++) {
+        if (dropout1[i])
+            continue;
         z2 += output1[i] * weight1[i];
+    }
+    z2 += weight1[HIDDEN_COUNT];
+
+    return sigmoid(z2);
+}
+
+double predict(vector<double> &output1, const vector<double> &feature, const vector<vector<double> > &weight0, const vector<double> &weight1)
+{
+    for (int i = 0; i < HIDDEN_COUNT; i++) {
+        double z1 = 0.0;
+        for (int j = 0; j < FEATURE_COUNT; j++) {
+            z1 += feature[j] * weight0[i][j] * (1 - DROPOUT0_PROB);
+        }
+        z1 += weight0[i][FEATURE_COUNT];
+
+        output1[i] = relu(z1);
+    }
+
+    double z2 = 0.0;
+    
+    for (int i = 0; i < HIDDEN_COUNT; i++) {
+        z2 += output1[i] * weight1[i] * (1 - DROPOUT1_PROB);
     }
     z2 += weight1[HIDDEN_COUNT];
 
@@ -83,21 +113,35 @@ double train(vector<vector<double> > &weight0, vector<double> &weight1, const ve
             const vector<double> featureSet = newFeatureMatrix[index];
             double label = newLabelMatrix[index];
 
+            // Generate dropout vector
+            vector<bool> dropout0(FEATURE_COUNT);
+            for (int i = 0; i < FEATURE_COUNT; i++) {
+                dropout0[i] = ((double)rand() / RAND_MAX < DROPOUT0_PROB);
+            }
+            vector<bool> dropout1(HIDDEN_COUNT);
+            for (int i = 0; i < HIDDEN_COUNT; i++) {
+                dropout1[i] = ((double)rand() / RAND_MAX < DROPOUT1_PROB);
+            }
+
             // Gradient Descent
             vector<double> output1(HIDDEN_COUNT);
-            double predictLabel = predict(output1, featureSet, weight0, weight1);
+            double predictLabel = predictWithDropout(output1, featureSet, weight0, weight1, dropout0, dropout1);
             double gradient_output2 = 2 * (label - predictLabel);
 
             vector<double> gradient_output1(HIDDEN_COUNT);
             for (int i = 0; i < HIDDEN_COUNT; i++) {
+                if (dropout1[i])
+                    continue;
                 gradient_output1[i] = gradient_output2 * weight1[i];
                 weight1[i] += ETA * gradient_output2 * output1[i];
             }
             weight1[HIDDEN_COUNT] += ETA * gradient_output2;
             
             for (int i = 0; i < HIDDEN_COUNT; i++) {
+                if (dropout1[i])
+                    continue;
                 for (int j = 0; j < FEATURE_COUNT; j++) {
-                    if (output1[i] > 0.0)
+                    if (!dropout0[j] && output1[i] > 0.0)
                         weight0[i][j] += ETA * gradient_output1[i] * featureSet[j];
                 }
                 weight0[i][FEATURE_COUNT] += ETA * gradient_output1[i];

@@ -26,7 +26,7 @@ double predict(vector<double> &output1, const vector<double> &feature, const vec
     for (int i = 0; i < HIDDEN_COUNT; i++) {
         double z1 = 0.0;
         for (int j = 0; j < FEATURE_COUNT; j++) {
-            z1 += feature[j] * weight0[i][j];
+            z1 += feature[j] * weight0[i][j] * (1 - DROPOUT0_PROB);
         }
         z1 += weight0[i][FEATURE_COUNT];
 
@@ -36,7 +36,7 @@ double predict(vector<double> &output1, const vector<double> &feature, const vec
     double z2 = 0.0;
     
     for (int i = 0; i < HIDDEN_COUNT; i++) {
-        z2 += output1[i] * weight1[i];
+        z2 += output1[i] * weight1[i] * (1 - DROPOUT1_PROB);
     }
     z2 += weight1[HIDDEN_COUNT];
 

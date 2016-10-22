@@ -1,7 +1,7 @@
 #!/bin/sh
 
-g++ -O3 -march=native -DHIDDEN_COUNT=45 2b_trainNN.cpp -o tmp/2b_trainNN
-g++ -O3 -march=native -DHIDDEN_COUNT=45 3b_predictNN.cpp -o tmp/3b_predictNN
+g++ -O3 -march=native -DHIDDEN_COUNT=50 -DDROPOUT0_PROB=0.0 -DDROPOUT1_PROB=0.2 2b_trainNN.cpp -o tmp/2b_trainNN
+g++ -O3 -march=native -DHIDDEN_COUNT=50 -DDROPOUT0_PROB=0.0 -DDROPOUT1_PROB=0.2 3b_predictNN.cpp -o tmp/3b_predictNN
 
 python 1b_parseWithFeaturePreprocess.py data/spam_train.csv data/spam_test.csv tmp/featureMatrix tmp/labelMatrix tmp/testingFeatureMatrix
 tmp/2b_trainNN tmp/featureMatrix tmp/labelMatrix weight_nn 60 -v
