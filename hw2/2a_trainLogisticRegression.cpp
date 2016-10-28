@@ -40,7 +40,7 @@ int myrandom(int i)
 double train(vector<double> &weight, double &bias, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix, int iteration)
 {
-    const double ETA = 0.000001;
+    const double ETA = 0.000002;
     double sum_crossEntropy = 0.0;
     int size = flag_validate ? featureMatrix.size() * 4 / 5 : featureMatrix.size();
 

@@ -124,24 +124,26 @@ filename_testingFeatureMatrix = sys.argv[5]
 featureMatrix = parseFileIntoFeatureMatrix(filename_train)
 labelMatrix = parseFileIntoLabelMatrix(filename_train)
 
-truncate(featureMatrix, labelMatrix)
+if len(featureMatrix) != 0:
+    truncate(featureMatrix, labelMatrix)
 
-featureMatrix = featurePreprocess(featureMatrix)
+    featureMatrix = featurePreprocess(featureMatrix)
 
-randomIndex = range(len(featureMatrix))
-shuffle(randomIndex)
-newFeatureMatrix = []
-for index in randomIndex:
-    newFeatureMatrix.append(featureMatrix[index])
-writeMatrix(filename_featureMatrix, newFeatureMatrix)
+    randomIndex = range(len(featureMatrix))
+    shuffle(randomIndex)
+    newFeatureMatrix = []
+    for index in randomIndex:
+        newFeatureMatrix.append(featureMatrix[index])
+    writeMatrix(filename_featureMatrix, newFeatureMatrix)
 
-newLabelMatrix = []
-for index in randomIndex:
-    newLabelMatrix.append(labelMatrix[index])
-writeMatrix(filename_labelMatrix, newLabelMatrix)
+    newLabelMatrix = []
+    for index in randomIndex:
+        newLabelMatrix.append(labelMatrix[index])
+    writeMatrix(filename_labelMatrix, newLabelMatrix)
 
 # Testing data
 testingFeatureMatrix = parseFileIntoFeatureMatrix(filename_test)
-testingFeatureMatrix = featurePreprocess(testingFeatureMatrix)
-writeMatrix(filename_testingFeatureMatrix, testingFeatureMatrix)
+if len(testingFeatureMatrix) != 0:
+    testingFeatureMatrix = featurePreprocess(testingFeatureMatrix)
+    writeMatrix(filename_testingFeatureMatrix, testingFeatureMatrix)
 
