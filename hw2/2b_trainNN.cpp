@@ -86,7 +86,7 @@ int myrandom(int i)
 double train(vector<vector<double> > &weight0, vector<double> &weight1, const vector<vector<double> > &featureMatrix, 
     const vector<double> &labelMatrix, int iteration)
 {
-    const double ETA = 0.000005;
+    const double ETA = 0.00001;
     double sum_crossEntropy = 0.0;
     int size = flag_validate ? featureMatrix.size() * 4 / 5 : featureMatrix.size();
 
