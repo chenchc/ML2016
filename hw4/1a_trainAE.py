@@ -6,7 +6,7 @@ import numpy;
 import gc;
 from keras.models import Sequential, Model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.layers import Input, Dense, Activation, Dropout
+from keras.layers import Input, Dense, Activation, Dropout, RepeatVector, Embedding, BatchNormalization
 from keras import regularizers
 from keras.utils.np_utils import to_categorical
 
@@ -46,7 +46,7 @@ def pruneWordVector(wordVectorDict, testLineVector):
 	wordSet = set();
 	for line in testLineVector:
 		for word in line.split(' '):
-			if word in wordVectorDict:
+			if word in wordVectorDict and word not in LABEL and word not in ["visual", "studio"]:
 				wordSet.add(word);
 	return list(wordSet);
 
@@ -67,8 +67,8 @@ def makeDict(wordVector):
 def extractOccurenceFeatureMatrix(lineVector, wordVectorDict):
 	output = numpy.zeros((len(lineVector), len(wordVectorDict)), dtype=numpy.int8);
 	for line in range(len(lineVector)):
-		if "visual studio" in lineVector[line]:
-			output[line][wordVectorDict["visual studio"]] = 1;
+		#if "visual studio" in lineVector[line]:
+		#	output[line][wordVectorDict["visual studio"]] = 1;
 		for word in lineVector[line].split(' '):
 			if word in wordVectorDict:
 				i = wordVectorDict[word];
@@ -87,8 +87,8 @@ def extractIDFOfWords(occurenceMatrix):
 def extractTFIDFFeatureMatrix(lineVector, wordVectorDict, idf):
 	tf = numpy.zeros((len(lineVector), len(wordVectorDict)), dtype=numpy.float32);
 	for line in range(len(lineVector)):
-		if "visual studio" in lineVector[line]:
-			tf[line][wordVectorDict["visual studio"]] += 1.0;
+		#if "visual studio" in lineVector[line]:
+		#	tf[line][wordVectorDict["visual studio"]] += 1.0;
 		for word in lineVector[line].split(' '):
 			if word in wordVectorDict:
 				i = wordVectorDict[word];
@@ -99,13 +99,19 @@ def extractTFIDFFeatureMatrix(lineVector, wordVectorDict, idf):
 			tfidf[row][col] *= idf[0][col];
 	return tfidf;
 
-def getLabeledData(featureMatrix, wordVectorDict):
+def getLabeledData(featureMatrix, lineVector):
 	labeledFeatureMatrix = [];
 	labelMatrix = [];
-	for row in featureMatrix:
+	for row in range(len(featureMatrix)):
+		dirty = 0;
 		for label in range(len(LABEL)):
-			if row[wordVectorDict[LABEL[label]]] > 0.0:
-				labeledFeatureMatrix.append(row);
+			if LABEL[label] in lineVector[row]:
+				dirty += 1;
+		if dirty != 1:
+			continue;
+		for label in range(len(LABEL)):
+			if LABEL[label] in lineVector[row]:
+				labeledFeatureMatrix.append(featureMatrix[row]);
 				labelMatrix.append(label);
 	return (numpy.array(labeledFeatureMatrix, dtype=numpy.float32), numpy.array(labelMatrix, dtype=numpy.int8));
 
@@ -131,7 +137,7 @@ testLineVector = prunePunctuation(testLineVector);
 wordVector = getWordVector(lineVector);
 wordVectorDict = makeDict(wordVector);
 wordVector = pruneWordVector(wordVectorDict, testLineVector);
-wordVector.append("visual studio");
+#wordVector.append("visual studio");
 wordVectorDict = makeDict(wordVector);
 writeVector(wordVector, wordsPath);
 
@@ -146,17 +152,25 @@ tfidfFeatureMatrix = extractTFIDFFeatureMatrix(lineVector, wordVectorDict, idf);
 featureMatrix = tfidfFeatureMatrix;
 
 # Labeled data?
-(labeledFeatureMatrix, labelMatrix) = getLabeledData(featureMatrix, wordVectorDict);
+(labeledFeatureMatrix, labelMatrix) = getLabeledData(featureMatrix, lineVector);
+classWeight = 1.0 / numpy.bincount(labelMatrix);
 
-# AutoEncoder
+# NN configuration
 input_img = Input(shape=(featureMatrix.shape[1],));
-encoded = Dense(80, activation='relu')(input_img);
-encoded = Dense(40, activation=None, activity_regularizer=regularizers.activity_l1(10e-5))(input_img);
+encoded0 = encoded = Dense(320)(input_img);
+encoded = BatchNormalization()(encoded);
+encoded = Activation('relu')(encoded);
+encoded = Dropout(0.3)(encoded);
 
-decoded = Dense(80, activation='relu')(encoded);
-decoded = Dense(featureMatrix.shape[1], activation='linear')(encoded);
+encoded1 = encoded = Dense(80)(encoded);
+encoded = BatchNormalization()(encoded);
 
-classd = Dense(20, activation='softmax')(encoded)
+decoded = Dense(320)(encoded);
+decoded = BatchNormalization()(decoded);
+decoded = Activation('relu')(decoded);
+decoded = Dropout(0.3)(decoded);
+
+decoded = Dense(featureMatrix.shape[1])(decoded);
 
 ae = Model(input=input_img, output=decoded);
 ae.compile(loss='mean_squared_error', optimizer='adam');
@@ -164,16 +178,25 @@ ae.compile(loss='mean_squared_error', optimizer='adam');
 encoder = Model(input=input_img, output=encoded);
 encoder.compile(loss='mean_squared_error', optimizer='adam');
 
+encoded0.trainable = False;
+encoded1.trainable = False;
+classd = Dense(160)(encoded);
+classd = Activation('relu')(classd);
+classd = Dropout(0.5)(classd);
+classd = Dense(20)(classd);
+classd = Activation('softmax')(classd);
+
 aednn = Model(input=input_img, output=classd)
 aednn.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy']);
 
-#ae.fit(featureMatrix, featureMatrix, batch_size=64, nb_epoch=50, validation_split=0.1, callbacks=[ModelCheckpoint(modelPath, monitor='val_loss', save_best_only=True), EarlyStopping(monitor='val_loss', patience=2, mode='min')]);
+# AutoEncoder
+ae.load_weights(modelPath + ".ae");
 
-#numpy.set_printoptions(threshold='nan');
-#result = encoder.predict(featureMatrix, batch_size=128, verbose=1);
-#for i in range(100):
-#	print numpy.argmax(result[i]);
-#	print result[i];
-#print numpy.bincount(numpy.argmax(result, axis=1));
+ae.fit(featureMatrix, featureMatrix, batch_size=64, nb_epoch=100, validation_split=0.1, callbacks=[ModelCheckpoint(modelPath + ".ae", monitor='val_loss', save_best_only=True, save_weights_only=True), EarlyStopping(monitor='val_loss', patience=3, mode='min')]);
 
-aednn.fit(labeledFeatureMatrix, to_categorical(labelMatrix, nb_classes=20), batch_size=64, nb_epoch=50, validation_split=0.1, callbacks=[ModelCheckpoint(modelPath, monitor='val_loss', save_best_only=True), EarlyStopping(monitor='val_loss', patience=2, mode='min')]);
+ae.load_weights(modelPath + ".ae");
+
+# DNN
+aednn.fit(labeledFeatureMatrix, to_categorical(labelMatrix, nb_classes=20), class_weight=classWeight, batch_size=64, nb_epoch=100, validation_split=0.1, callbacks=[ModelCheckpoint(modelPath, monitor='val_loss', save_best_only=True), EarlyStopping(monitor='val_loss', patience=3, mode='min')]);
+
+print numpy.bincount(numpy.argmax(aednn.predict(featureMatrix), axis=1));
